@@ -10,6 +10,15 @@ enum custom_layer {
     _FN2
 };
 
+// --- Custom keycodes for German umlauts (macOS ABC: Option+U dead key) ---
+// Shift-aware: tap = lowercase, Shift+tap = uppercase
+// Assign in VIAL via "Any" key: 0x7E40 (ä/Ä), 0x7E41 (ö/Ö), 0x7E42 (ü/Ü)
+enum custom_keycodes {
+    CK_AUML = QK_USER_0,  // ä/Ä
+    CK_OUML,               // ö/Ö
+    CK_UUML,               // ü/Ü
+};
+
 // --- LED index defines ---
 // Left half key LEDs (from keyboard.json layout order)
 #define LED_ESC   0   // [0,0]
@@ -102,13 +111,39 @@ void keyboard_post_init_user(void) {
     rgb_matrix_sethsv_noeeprom(0, 0, 0);
 }
 
-// --- TG keycode tracking ---
+// --- Umlaut helper (macOS ABC: Option+U = diaeresis dead key, then vowel) ---
+static void send_umlaut(uint16_t vowel) {
+    uint8_t mods = get_mods();
+    bool shifted = mods & MOD_MASK_SHIFT;
+    clear_mods();
+    tap_code16(LALT(KC_U));
+    if (shifted) {
+        tap_code16(LSFT(vowel));
+    } else {
+        tap_code16(vowel);
+    }
+    set_mods(mods);
+}
+
+// --- TG keycode tracking + umlaut custom keycodes ---
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (record->event.pressed) {
-        if (keycode == TG(_FN1)) {
-            layer1_toggled = !layer1_toggled;
-        } else if (keycode == TG(_FN2)) {
-            layer2_toggled = !layer2_toggled;
+        switch (keycode) {
+            case TG(_FN1):
+                layer1_toggled = !layer1_toggled;
+                break;
+            case TG(_FN2):
+                layer2_toggled = !layer2_toggled;
+                break;
+            case CK_AUML:
+                send_umlaut(KC_A);
+                return false;
+            case CK_OUML:
+                send_umlaut(KC_O);
+                return false;
+            case CK_UUML:
+                send_umlaut(KC_U);
+                return false;
         }
     }
     return true;
